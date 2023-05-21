@@ -17,7 +17,7 @@ def main(config):
   DEVICE_TYPE = config.get("device_type")
 
   if not PLEX_URL or not PLEX_TOKEN:
-    fail("Missing Plex configuration")
+    fail("Missing Plex configuration") # TODO: Bad practice
 
   def plex_get(path, **kwargs):
     return http.get(PLEX_URL + path, headers={"X-Plex-Token": PLEX_TOKEN}, **kwargs)
@@ -58,11 +58,11 @@ def main(config):
     return []
 
   title = item.query("@title")
-  art_id = item.query("@grandparentThumb")
   year = item.query("@year")
   is_tv = item.query("@type") == "episode"
+  state = item.query("./Player/@state")
 
-  duration = int(item.query("./Media[@selected='1']/@duration"))
+  duration = int(item.query("@duration"))
   viewOffset = int(item.query("@viewOffset"))
   remaining = duration - viewOffset
 
@@ -71,6 +71,7 @@ def main(config):
     render.Marquee(width=text_width, child=render.Text(title, font="6x13")),
   ]
   if is_tv:
+    art_id = item.query("@grandparentThumb")
     show = item.query("@grandparentTitle")
 
     season = int(item.query("@parentIndex"))
@@ -79,6 +80,8 @@ def main(config):
 
     text = "%s %s" % (show, episode_id)
   else:
+    art_id = item.query("@thumb")
+
     text = year
   lines.append(render.Marquee(width=text_width, child=render.Text(text)))
 
@@ -94,7 +97,11 @@ def main(config):
         ),
         font="CG-pixel-3x5-mono"
       )
-      for remaining_counter in range(remaining, remaining - LIFETIME * 1000, -1000 // FPS)
+      for remaining_counter in (
+        [remaining]
+        if state == "paused"
+        else range(remaining, max(0, remaining - LIFETIME * 1000), -1000 // FPS) # TODO: Verify this
+      )
     ])
   )
 
