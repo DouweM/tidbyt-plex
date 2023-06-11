@@ -17,7 +17,11 @@ def main(config):
   DEVICE_TYPE = config.get("device_type")
 
   if not PLEX_URL or not PLEX_TOKEN:
-    fail("Missing Plex configuration") # TODO: Bad practice
+    return render.Root(
+        child=render.Box(
+            child=render.WrappedText("Plex Server not configured")
+        )
+    )
 
   def plex_get(path, **kwargs):
     return http.get(PLEX_URL + path, headers={"X-Plex-Token": PLEX_TOKEN}, **kwargs)
@@ -66,10 +70,6 @@ def main(config):
   viewOffset = int(item.query("@viewOffset"))
   remaining = duration - viewOffset
 
-  text_width = 64-21-1
-  lines = [
-    render.Marquee(width=text_width, child=render.Text(title, font="6x13")),
-  ]
   if is_tv:
     art_id = item.query("@grandparentThumb")
     show = item.query("@grandparentTitle")
@@ -78,32 +78,12 @@ def main(config):
     episode = int(item.query("@index"))
     episode_id = "S%s E%s" % (("0%d" % season if season < 10 else season), ("0%d" % episode if episode < 10 else episode))
 
-    text = "%s %s" % (show, episode_id)
+    detail_text = "%s %s" % (show, episode_id)
   else:
     art_id = item.query("@thumb")
+    detail_text = year
 
-    text = year
-  lines.append(render.Marquee(width=text_width, child=render.Text(text)))
-
-  lines.append(
-    render.Animation(children=[
-      render.Text(
-        "-%d:%s" % (
-          remaining_counter / 1000 / 60,
-          (
-            int((remaining_counter / 1000) % 60)
-            if (remaining_counter / 1000) % 60 >= 10
-            else "0%d" % ((remaining_counter / 1000) % 60))
-        ),
-        font="CG-pixel-3x5-mono"
-      )
-      for remaining_counter in (
-        [remaining]
-        if state == "paused"
-        else range(remaining, max(0, remaining - LIFETIME * 1000), -1000 // FPS) # TODO: Verify this
-      )
-    ])
-  )
+  text_width = 64-21-1
 
   return render.Root(
     child=render.Row(
@@ -120,7 +100,11 @@ def main(config):
           child=render.Column(
             expanded=True,
             main_align="space_between",
-            children=lines
+            children=[
+              render.Marquee(width=text_width, child=render.Text(title, font="6x13")),
+              render.Marquee(width=text_width, child=render.Text(detail_text)),
+              render.Text("-%d min" % (remaining / 1000 / 60), font="CG-pixel-3x5-mono")
+            ]
           )
         )
       ]
