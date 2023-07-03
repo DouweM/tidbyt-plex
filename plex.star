@@ -1,109 +1,54 @@
 load("schema.star", "schema")
 load("render.star", "render")
-load("http.star", "http")
-load("cache.star", "cache")
-load("xpath.star", "xpath")
+load("pixlib/const.star", "const")
+load("pixlib/file.star", "file")
+load("./client.star", "client")
 
-SESSIONS_PATH = "/status/sessions"
-TRANSCODE_PATH = "/photo/:/transcode"
+PLEX_LOGO_URL = "https://www.plex.tv/wp-content/themes/plex/assets/img/favicons/plex-76.png"
 
-LIFETIME = 15
-FPS = 20
+ART_HEIGHT = const.HEIGHT
+ART_WIDTH = 21
+TEXT_WIDTH = const.WIDTH - ART_WIDTH - 1
 
 def main(config):
-  PLEX_URL = config.get("plex_url")
-  PLEX_TOKEN = config.get("plex_token")
-  USER_NAME = config.get("user_name")
-  DEVICE_TYPE = config.get("device_type")
-
-  if not PLEX_URL or not PLEX_TOKEN:
+  if not client.config_valid(config):
     return render.Root(
         child=render.Box(
             child=render.WrappedText("Plex Server not configured")
         )
     )
 
-  def plex_get(path, **kwargs):
-    return http.get(PLEX_URL + path, headers={"X-Plex-Token": PLEX_TOKEN}, **kwargs)
-
-  def transcode(**params):
-      id = params["url"]
-      cached = cache.get(id)
-      if cached:
-          return cached
-
-      response = plex_get(TRANSCODE_PATH, params=params)
-
-      if response.status_code != 200:
-          fail("Art not found", id)
-
-      data = response.body()
-      cache.set(id, data)
-
-      return data
-
-  response = plex_get(SESSIONS_PATH)
-  if response.status_code != 200:
-      fail("Plex API error", response.status_code)
-
-  data = response.body()
-  doc = xpath.loads(data)
-
-  filters = [
-    "@type='episode' or @type='movie'",
-  ]
-  if USER_NAME:
-    filters.append("./User/@title='%s'" % USER_NAME)
-  if DEVICE_TYPE:
-    filters.append("./Player/@device='%s'" % DEVICE_TYPE)
-
-  item = doc.query_node('//MediaContainer/Video[%s]' % " and ".join(filters))
+  item = client.now_playing(config)
   if not item:
     return []
 
-  title = item.query("@title")
-  year = item.query("@year")
-  is_tv = item.query("@type") == "episode"
-  state = item.query("./Player/@state")
+  art_id = item.get("art_id")
+  art = (
+    client.transcode(config, art_id, height=str(ART_HEIGHT), width=str(ART_WIDTH))
+    if art_id
+    else file.read(config, "placeholder.png")
+  )
 
-  duration = int(item.query("@duration"))
-  viewOffset = int(item.query("@viewOffset"))
-  remaining = duration - viewOffset
-
-  if is_tv:
-    art_id = item.query("@grandparentThumb")
-    show = item.query("@grandparentTitle")
-
-    season = int(item.query("@parentIndex"))
-    episode = int(item.query("@index"))
-    episode_id = "S%s E%s" % (("0%d" % season if season < 10 else season), ("0%d" % episode if episode < 10 else episode))
-
-    detail_text = "%s %s" % (show, episode_id)
+  if item.get("tv", False):
+    detail_text = " ".join([item.get("show"), item.get("episode_id")])
   else:
-    art_id = item.query("@thumb")
-    detail_text = year
-
-  text_width = 64-21-1
+    detail_text = item.get("year")
 
   return render.Root(
     child=render.Row(
       expanded=True,
       main_align="space_between",
       children=[
-        render.Image(
-          src=transcode(url=art_id, height="32", width="21"),
-          height=32,
-          width=21
-        ),
+        render.Image(src=art, height=ART_HEIGHT, width=ART_WIDTH),
         render.Padding(
           pad=(1,0,0,0),
           child=render.Column(
             expanded=True,
             main_align="space_between",
             children=[
-              render.Marquee(width=text_width, child=render.Text(title, font="6x13")),
-              render.Marquee(width=text_width, child=render.Text(detail_text)),
-              render.Text("-%d min" % (remaining / 1000 / 60), font="CG-pixel-3x5-mono")
+              render.Marquee(width=TEXT_WIDTH, child=render.Text(item.get("title"), font="6x13")),
+              render.Marquee(width=TEXT_WIDTH, child=render.Text(detail_text)),
+              render.Text("-%d min" % (item.get("remaining") / 1000 / 60), font="CG-pixel-3x5-mono")
             ]
           )
         )
