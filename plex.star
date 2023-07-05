@@ -24,9 +24,9 @@ def main(config):
 
   art_id = item.get("art_id")
   art = (
-    client.transcode(config, art_id, height=str(ART_HEIGHT), width=str(ART_WIDTH))
+    client.transcode(art_id, height=str(ART_HEIGHT), width=str(ART_WIDTH))
     if art_id
-    else file.read(config, "placeholder.png")
+    else file.read("placeholder.png")
   )
 
   if item.get("tv", False):
