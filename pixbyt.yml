@@ -1,0 +1,19 @@
+jobs:
+- name: plex
+  tasks:
+  - tap-pixlet--plex target-tidbyt
+- name: plex--webp
+  tasks:
+  - tap-pixlet--plex target-webp
+
+plugins:
+  extractors:
+  - name: tap-pixlet--plex
+    inherit_from: tap-pixlet
+    config:
+      path: apps/plex
+      app_config:
+        plex_url: $PLEX_URL # Plex Server URL. If HTTPS, certificate must be valid. Example: 'http://my-nas:32400'
+        plex_token: $PLEX_TOKEN # Plex API Token. See https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+        user_name: $PLEX_USER_NAME # Filter: User Name. Leave blank to consider sessions from all users
+        device_type: $PLEX_DEVICE_TYPE # Filter: Device Type. Leave blank to consider sessions from all types of devices. Example: 'Apple TV'
