@@ -1,0 +1,75 @@
+name: Build, Test, Push
+
+on:
+  push:
+  schedule:
+    - cron: "0 0 * * 0"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      ### Build
+      - name: Build / Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Build / Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build / Extract Docker metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v4.6.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build / Build Docker image
+        uses: docker/build-push-action@v4.1.1
+        with:
+          context: .
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      ### Test
+      - name: Test / Render app to image
+        env:
+          PLEX_URL: ${{secrets.PLEX_URL}}
+          PLEX_TOKEN: ${{secrets.PLEX_TOKEN}}
+        run: |
+          docker run -v "$(pwd)/output:/project/output" -e TAP_PIXLET_MAGNIFICATION=8 -e PLEX_URL=$PLEX_URL -e PLEX_TOKEN=$PLEX_TOKEN ${{ steps.meta.outputs.tags }}
+          sudo mv output/**/*.webp output/image.webp
+
+      - name: Test / Store image
+        uses: actions/upload-artifact@v3
+        with:
+          name: image
+          path: output/image.webp
+
+      ### Push
+      - name: Push / Log in to the Container registry
+        uses: docker/login-action@v2.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push / Push Docker image
+        uses: docker/build-push-action@v4.1.1
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
