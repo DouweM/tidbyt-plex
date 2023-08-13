@@ -42,7 +42,8 @@ def client.now_playing(config):
   if device_type:
     filters.append("./Player/@device='%s'" % device_type)
 
-  item = doc.query_node('//MediaContainer/Video[%s]' % " and ".join(filters))
+  query = '//MediaContainer/Video[(%s)]' % ") and (".join(filters)
+  item = doc.query_node(query)
   if not item:
     return None
 
