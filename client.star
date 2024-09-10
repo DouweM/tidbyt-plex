@@ -83,5 +83,24 @@ def client.now_playing(config):
 
   return metadata
 
+def client.recently_added(config):
+    response = client._get(config, "/library/recentlyAdded")
+    if response.status_code != 200:
+        fail("Plex API error", response.status_code)
+
+    data = response.body()
+    doc = xpath.loads(data)
+
+    items = doc.query_all_nodes("//MediaContainer/Directory")
+    return [
+        {
+            "title": item.query("@title"),
+            "thumb": item.query("@thumb"),
+            "type": item.query("@type"),
+        }
+        for item in items
+    ]
+
+
 def client._get(config, path, **kwargs):
     return http.get(config.get("plex_url") + path, headers={"X-Plex-Token": config.get("plex_token")}, **kwargs)

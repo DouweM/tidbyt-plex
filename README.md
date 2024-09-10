@@ -42,6 +42,7 @@ PLEX_URL="<url>" # Plex Server URL. If HTTPS, certificate must be valid. Example
 PLEX_TOKEN="<token>" # Plex API Token. See https://support.plex.tv/ articles/204059436-finding-an-authentication-token-x-plex-token/
 PLEX_USER_NAME="<user name>" # Filter: User Name. Leave blank to consider  sessions from all users
 PLEX_DEVICE_TYPE="<device type>" # Filter: Device Type. Leave blank to  consider sessions from all types of devices. Example: 'Apple TV'
+PLEX_MODE="<mode>" # Display Mode. Choose between 'now_playing' (default) and 'recently_added'
 ```
 
 ## Usage
