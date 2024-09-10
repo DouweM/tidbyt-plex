@@ -6,6 +6,13 @@ jobs:
   tasks:
   - tap-pixlet--plex target-webp
 
+- name: plex--recently-added
+  tasks:
+  - tap-pixlet--plex--recently-added target-tidbyt
+- name: plex--recently-added--webp
+  tasks:
+  - tap-pixlet--plex--recently-added target-webp
+
 plugins:
   extractors:
   - name: tap-pixlet--plex
@@ -17,3 +24,13 @@ plugins:
         plex_token: $PLEX_TOKEN # Plex API Token. See https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
         user_name: $PLEX_USER_NAME # Filter: User Name. Leave blank to consider sessions from all users
         device_type: $PLEX_DEVICE_TYPE # Filter: Device Type. Leave blank to consider sessions from all types of devices. Example: 'Apple TV'
+        mode: now_playing
+
+  - name: tap-pixlet--plex--recently-added
+    inherit_from: tap-pixlet
+    config:
+      path: apps/plex
+      app_config:
+        plex_url: $PLEX_URL # Plex Server URL. If HTTPS, certificate must be valid. Example: 'http://my-nas:32400'
+        plex_token: $PLEX_TOKEN # Plex API Token. See https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+        mode: recently_added
