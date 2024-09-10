@@ -91,12 +91,10 @@ def client.recently_added(config):
     data = response.body()
     doc = xpath.loads(data)
 
-    items = doc.query_all_nodes("//MediaContainer/Directory")
+    items = doc.query_all_nodes("//MediaContainer/*")
     return [
         {
-            "title": item.query("@title"),
-            "thumb": item.query("@thumb"),
-            "type": item.query("@type"),
+            "thumb": item.query("@thumb")
         }
         for item in items
     ]
